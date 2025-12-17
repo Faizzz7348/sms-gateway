@@ -8,7 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Search, RotateCcw, Eye, Copy, Trash2 } from "lucide-react";
+import { api } from "@/lib/api";
+import { Search, RotateCcw, Eye, Copy, Trash2, CheckCircle } from "lucide-react";
 import { useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 
@@ -99,6 +100,31 @@ export default function MessageHistory() {
     setSelectedMessage(message);
   };
 
+  // Check message status mutation
+  const checkStatusMutation = useMutation({
+    mutationFn: async (textbeltId: string) => {
+      const response = await api.messages.checkStatus(textbeltId);
+      return response;
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Status Check",
+        description: `Message status: ${data.status || 'UNKNOWN'}`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to check status",
+        description: error.message || "Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleCheckStatus = (textbeltId: string) => {
+    checkStatusMutation.mutate(textbeltId);
+  };
+
   const filteredMessages = messages.filter((message) => {
     const matchesSearch = searchTerm === "" || 
       message.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -152,11 +178,11 @@ export default function MessageHistory() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <div className="w-full">
       <Card>
         <CardHeader>
           <CardTitle>Message History</CardTitle>
-          <div className="flex flex-col sm:flex-row sm:items-center space-y-4 sm:space-y-0 sm:space-x-3">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
             <div className="relative flex-1">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
@@ -182,25 +208,25 @@ export default function MessageHistory() {
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full min-w-[640px]">
               <thead className="bg-muted">
                 <tr>
-                  <th className="px-6 py-3 text-left text-sm font-medium text-muted-foreground uppercase tracking-wider">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Recipient
                   </th>
-                  <th className="px-6 py-3 text-left text-sm font-medium text-muted-foreground uppercase tracking-wider">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">
                     Message
                   </th>
-                  <th className="px-6 py-3 text-left text-sm font-medium text-muted-foreground uppercase tracking-wider">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-6 py-3 text-left text-sm font-medium text-muted-foreground uppercase tracking-wider">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden sm:table-cell">
                     Sent
                   </th>
-                  <th className="px-6 py-3 text-left text-sm font-medium text-muted-foreground uppercase tracking-wider">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden lg:table-cell">
                     Cost
                   </th>
-                  <th className="px-6 py-3 text-left text-sm font-medium text-muted-foreground uppercase tracking-wider">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
@@ -215,32 +241,45 @@ export default function MessageHistory() {
                 ) : (
                   filteredMessages.map((message) => (
                     <tr key={message.id} className="hover:bg-accent" data-testid={`row-message-${message.id}`}>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-4 py-4 whitespace-nowrap">
                         <div>
                           <p className="text-sm font-medium text-foreground" data-testid={`text-recipient-name-${message.id}`}>
                             {message.recipientName || "Unknown"}
                           </p>
-                          <p className="text-sm text-muted-foreground" data-testid={`text-recipient-phone-${message.id}`}>
+                          <p className="text-xs text-muted-foreground" data-testid={`text-recipient-phone-${message.id}`}>
                             {message.recipientPhone}
                           </p>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-4 hidden md:table-cell">
                         <p className="text-sm text-foreground truncate max-w-xs" data-testid={`text-message-content-${message.id}`}>
                           {message.content}
                         </p>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap" data-testid={`status-message-${message.id}`}>
+                      <td className="px-4 py-4 whitespace-nowrap" data-testid={`status-message-${message.id}`}>
                         {getStatusBadge(message.status)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground" data-testid={`text-sent-time-${message.id}`}>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm text-muted-foreground hidden sm:table-cell" data-testid={`text-sent-time-${message.id}`}>
                         {message.sentAt ? formatDistanceToNow(new Date(message.sentAt), { addSuffix: true }) : ""}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground" data-testid={`text-cost-${message.id}`}>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm text-muted-foreground hidden lg:table-cell" data-testid={`text-cost-${message.id}`}>
                         ${message.cost || "0.00"}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <div className="flex items-center space-x-2">
+                      <td className="px-4 py-4 whitespace-nowrap text-sm">
+                        <div className="flex items-center gap-1">
+                          {message.textbeltId && (
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => handleCheckStatus(message.textbeltId!)}
+                              disabled={checkStatusMutation.isPending}
+                              title="Check message status"
+                              data-testid={`button-check-status-${message.id}`}
+                              className="h-8 w-8 p-0"
+                            >
+                              <CheckCircle className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
                           <Button 
                             variant="ghost" 
                             size="sm"
@@ -248,8 +287,9 @@ export default function MessageHistory() {
                             disabled={resendMutation.isPending}
                             title="Resend message"
                             data-testid={`button-resend-${message.id}`}
+                            className="h-8 w-8 p-0"
                           >
-                            <RotateCcw className="h-3 w-3" />
+                            <RotateCcw className="h-3.5 w-3.5" />
                           </Button>
                           <Button 
                             variant="ghost" 
@@ -257,8 +297,9 @@ export default function MessageHistory() {
                             onClick={() => copyToClipboard(message.content)}
                             title="Copy message content"
                             data-testid={`button-copy-${message.id}`}
+                            className="h-8 w-8 p-0 hidden sm:flex"
                           >
-                            <Copy className="h-3 w-3" />
+                            <Copy className="h-3.5 w-3.5" />
                           </Button>
                           <Dialog>
                             <DialogTrigger asChild>
@@ -268,8 +309,9 @@ export default function MessageHistory() {
                                 onClick={() => handleViewDetails(message)}
                                 title="View details"
                                 data-testid={`button-view-details-${message.id}`}
+                                className="h-8 w-8 p-0"
                               >
-                                <Eye className="h-3 w-3" />
+                                <Eye className="h-3.5 w-3.5" />
                               </Button>
                             </DialogTrigger>
                             <DialogContent className="max-w-md">
@@ -321,10 +363,10 @@ export default function MessageHistory() {
                             onClick={() => handleDelete(message.id)}
                             disabled={deleteMutation.isPending}
                             title="Delete message"
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
+                            className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
                             data-testid={`button-delete-${message.id}`}
                           >
-                            <Trash2 className="h-3 w-3" />
+                            <Trash2 className="h-3.5 w-3.5" />
                           </Button>
                         </div>
                       </td>
@@ -335,13 +377,13 @@ export default function MessageHistory() {
             </table>
           </div>
 
-          {/* Pagination placeholder */}
-          <div className="px-6 py-4 border-t border-border">
-            <div className="flex items-center justify-between">
+          {/* Pagination */}
+          <div className="px-4 sm:px-6 py-4 border-t border-border">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
               <p className="text-sm text-muted-foreground" data-testid="text-pagination-info">
-                Showing {filteredMessages.length} messages
+                Showing {filteredMessages.length} message{filteredMessages.length !== 1 ? 's' : ''}
               </p>
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center gap-2">
                 <Button variant="outline" size="sm" disabled data-testid="button-previous-page">
                   Previous
                 </Button>

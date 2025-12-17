@@ -173,8 +173,8 @@ export class MemStorage implements IStorage {
       id,
       apiKey: insertSettings.apiKey ?? null,
       token: insertSettings.token ?? null,
-      apiEndpoint: insertSettings.apiEndpoint ?? "https://textbelt.com/text",
-      defaultCountryCode: insertSettings.defaultCountryCode ?? "+1",
+      apiEndpoint: insertSettings.apiEndpoint ?? "https://textbelt.com/intl",
+      defaultCountryCode: insertSettings.defaultCountryCode ?? "+60",
       autoSaveDrafts: insertSettings.autoSaveDrafts ?? true,
       messageConfirmations: insertSettings.messageConfirmations ?? false
     };

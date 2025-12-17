@@ -1,12 +1,24 @@
 import type { Express, RequestHandler } from "express";
 import { createServer, type Server } from "http";
 import session from "express-session";
+import connectPgSimple from "connect-pg-simple";
 import { storage } from "./storage";
 import { insertContactSchema, insertMessageSchema, updateSettingsSchema } from "@shared/schema";
 import { z } from "zod";
+import { pool } from "./db";
+
+const PgSession = connectPgSimple(session);
+
+// Setup PostgreSQL session store
+const sessionStore = new PgSession({
+  pool: pool as any, // Use the database connection pool
+  tableName: 'sessions',
+  createTableIfMissing: true,
+});
 
 // Simple session middleware
 const sessionMiddleware = session({
+  store: sessionStore,
   secret: process.env.SESSION_SECRET || "simple-sms-app-secret",
   resave: false,
   saveUninitialized: false,
@@ -68,6 +80,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/contacts", isAuthenticated, async (req, res) => {
     try {
       const contacts = await storage.getContacts();
+      res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
       res.json(contacts);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch contacts" });
@@ -127,6 +140,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/messages", isAuthenticated, async (req, res) => {
     try {
       const messages = await storage.getMessages();
+      res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
       res.json(messages);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch messages" });
@@ -264,10 +278,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Check message status by textbelt ID
+  app.get("/api/messages/status/:textbeltId", isAuthenticated, async (req, res) => {
+    try {
+      const { textbeltId } = req.params;
+      res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+      
+      if (!textbeltId || textbeltId === 'null') {
+        return res.status(400).json({ message: "Invalid textbelt ID" });
+      }
+
+      try {
+        const statusResponse = await fetch(`https://textbelt.com/status/${textbeltId}`);
+        const statusData = await statusResponse.json();
+        
+        console.log("📊 Textbelt Status Check:", JSON.stringify(statusData, null, 2));
+        
+        res.json({
+          success: true,
+          status: statusData.status || 'UNKNOWN',
+          details: statusData
+        });
+      } catch (apiError) {
+        console.log("🔥 Status Check Error:", apiError);
+        res.status(500).json({
+          success: false,
+          message: "Failed to check message status",
+          error: "Network error"
+        });
+      }
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        message: "Failed to check message status" 
+      });
+    }
+  });
+
   // Settings routes
   app.get("/api/settings", isAuthenticated, async (req, res) => {
     try {
       const settings = await storage.getSettings();
+      res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
       if (!settings) {
         // Return default settings for Malaysia/Asia
         const defaultSettings = {
@@ -304,6 +356,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Account balance route
   app.get("/api/account/balance", isAuthenticated, async (req, res) => {
     try {
+      res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
       const settings = await storage.getSettings();
       if (!settings?.apiKey) {
         return res.status(400).json({ 
@@ -348,6 +401,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Account usage statistics
   app.get("/api/account/usage", isAuthenticated, async (req, res) => {
     try {
+      res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
       const messages = await storage.getMessages();
       
       const totalMessages = messages.length;
@@ -412,6 +466,109 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ 
         success: false, 
         message: "Failed to test API connection" 
+      });
+    }
+  });
+
+  // Purchase additional credits (get payment link)
+  app.post("/api/account/purchase", isAuthenticated, async (req, res) => {
+    try {
+      const { quantity } = req.body; // number of texts to purchase
+      
+      if (!quantity || quantity < 1) {
+        return res.status(400).json({ 
+          message: "Quantity must be at least 1" 
+        });
+      }
+
+      const settings = await storage.getSettings();
+      if (!settings?.apiKey) {
+        return res.status(400).json({ 
+          message: "API key not configured" 
+        });
+      }
+
+      // Generate purchase URL
+      const purchaseUrl = `https://textbelt.com/purchase/${settings.apiKey}?quantity=${quantity}`;
+      
+      console.log("💳 Purchase URL Generated:", purchaseUrl);
+      console.log("   Quantity:", quantity, "texts");
+      console.log("   Estimated Cost: $", (quantity * 0.04).toFixed(2));
+      
+      res.json({
+        success: true,
+        purchaseUrl,
+        quantity,
+        estimatedCost: `$${(quantity * 0.04).toFixed(2)}`,
+        message: "Open this URL to complete your purchase"
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        message: "Failed to generate purchase link" 
+      });
+    }
+  });
+
+  // Verify phone number format
+  app.post("/api/phone/verify", isAuthenticated, async (req, res) => {
+    try {
+      const { phone } = req.body;
+      
+      if (!phone) {
+        return res.status(400).json({ 
+          message: "Phone number is required" 
+        });
+      }
+
+      // Basic validation
+      const phoneRegex = /^\+?[1-9]\d{1,14}$/; // E.164 format
+      const isValid = phoneRegex.test(phone.replace(/[\s-()]/g, ''));
+      
+      // Try to send a test to Textbelt for validation (without actually sending)
+      const settings = await storage.getSettings();
+      let textbeltValidation = null;
+      
+      if (settings?.apiKey) {
+        try {
+          const endpoint = settings.apiEndpoint || "https://textbelt.com/text";
+          const testResponse = await fetch(endpoint, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: new URLSearchParams({
+              phone: phone,
+              message: "Verification test",
+              key: settings.apiKey,
+            }).toString(),
+          });
+          
+          const result = await testResponse.json();
+          textbeltValidation = {
+            accepted: result.success || !result.error?.toLowerCase().includes('invalid'),
+            message: result.error || "Phone number format accepted"
+          };
+        } catch (e) {
+          // Ignore API errors
+        }
+      }
+      
+      console.log("📱 Phone Verification:", phone);
+      console.log("   Local Validation:", isValid);
+      console.log("   Textbelt Validation:", textbeltValidation);
+      
+      res.json({
+        success: true,
+        phone,
+        isValidFormat: isValid,
+        textbeltCheck: textbeltValidation,
+        normalized: phone.replace(/[\s-()]/g, '')
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        message: "Failed to verify phone number" 
       });
     }
   });

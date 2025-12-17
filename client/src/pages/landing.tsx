@@ -1,14 +1,13 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { MessageSquare, Eye, EyeOff } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { MessageSquare, Lock, ArrowRight, Zap, Shield, Globe } from "lucide-react";
 
 export default function Landing() {
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [isTransitioning, setIsTransitioning] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,11 +22,7 @@ export default function Landing() {
       });
 
       if (response.ok) {
-        setIsTransitioning(true);
-        // Simple transition before navigating
-        setTimeout(() => {
-          window.location.href = "/";
-        }, 800);
+        window.location.href = "/";
       } else {
         setError("Incorrect password");
       }
@@ -39,84 +34,121 @@ export default function Landing() {
   };
 
   return (
-    <div className={`min-h-screen bg-background flex flex-col items-center justify-center px-4 transition-all duration-500 ease-out ${
-      isTransitioning ? 'opacity-0' : 'opacity-100 animate-in fade-in duration-700'
-    }`}>
-      <div className={`text-center max-w-md mx-auto bg-card border border-border p-8 rounded-lg shadow-2xl transform transition-all duration-500 ease-out ${
-        isTransitioning 
-          ? 'opacity-0 translate-y-4' 
-          : 'opacity-100 translate-y-0 animate-in slide-in-from-bottom-4 duration-500 delay-200'
-      }`}>
-        {/* Logo */}
-        <div className={`w-16 h-16 bg-primary rounded-lg flex items-center justify-center mx-auto mb-6 transform transition-all duration-500 ease-out ${
-          isTransitioning 
-            ? 'opacity-0' 
-            : 'opacity-100 animate-in zoom-in duration-500 delay-300'
-        }`}>
-          <MessageSquare className="h-8 w-8 text-primary-foreground" />
-        </div>
-        
-        {/* Title */}
-        <h1 className={`text-sm font-bold mb-4 transition-all duration-500 ease-out ${
-          isTransitioning 
-            ? 'opacity-0 text-green-400' 
-            : 'opacity-100 text-foreground animate-in slide-in-from-top-2 duration-500 delay-400'
-        }`}>
-          {isTransitioning ? 'Success!' : 'SMS Messaging'}
-        </h1>
-        
-        {/* Description */}
-        <p className={`text-sm mb-8 transition-all duration-500 ease-out ${
-          isTransitioning 
-            ? 'opacity-0' 
-            : 'opacity-100 text-muted-foreground animate-in slide-in-from-top-2 duration-500 delay-500'
-        }`}>
-          {isTransitioning ? '' : 'Enter password to access'}
-        </p>
-        
-        {/* Password Form */}
-        <form onSubmit={handleSubmit} className={`space-y-4 transition-all duration-500 ease-out ${
-          isTransitioning 
-            ? 'opacity-0 pointer-events-none' 
-            : 'opacity-100 animate-in slide-in-from-bottom-4 duration-500 delay-600'
-        }`}>
-          <div className="relative">
-            <Input
-              type={showPassword ? "text" : "password"}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter password"
-              className="pr-10 bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-blue-500 focus:ring-blue-500"
-              data-testid="input-password"
-              required
-            />
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="absolute right-2 top-0 h-full px-2 text-gray-400 hover:text-white"
-              onClick={() => setShowPassword(!showPassword)}
-            >
-              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-            </Button>
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted flex items-center justify-center p-4">
+      <div className="w-full max-w-6xl grid lg:grid-cols-2 gap-8 items-center">
+        {/* Left side - Branding */}
+        <div className="space-y-6 text-center lg:text-left">
+          <div className="inline-flex items-center justify-center lg:justify-start space-x-3 mb-4">
+            <div className="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center shadow-lg">
+              <MessageSquare className="h-6 w-6 text-primary-foreground" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-foreground">Textbelt Pro</h1>
+              <p className="text-sm text-muted-foreground">SMS Gateway</p>
+            </div>
           </div>
-          
-          {error && (
-            <p className="text-red-500 text-sm" data-testid="text-error">
-              {error}
+
+          <div className="space-y-3">
+            <h2 className="text-4xl font-bold text-foreground">
+              Professional SMS<br />Gateway Solution
+            </h2>
+            <p className="text-lg text-muted-foreground">
+              Send SMS messages globally with ease. Reliable, fast, and secure messaging platform.
             </p>
-          )}
-          
-          <Button 
-            type="submit"
-            size="lg" 
-            disabled={isLoading || isTransitioning || !password}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-sm text-white font-semibold border-2 border-blue-400 shadow-[0_0_10px_rgba(59,130,246,0.5),0_0_20px_rgba(59,130,246,0.3),0_0_30px_rgba(59,130,246,0.2)] hover:shadow-[0_0_15px_rgba(59,130,246,0.7),0_0_25px_rgba(59,130,246,0.5),0_0_35px_rgba(59,130,246,0.3)] transition-all duration-300"
-            data-testid="button-access"
-          >
-            {isTransitioning ? "Welcome!" : isLoading ? "Checking..." : "Access App"}
-          </Button>
-        </form>
+          </div>
+
+          <div className="grid sm:grid-cols-3 gap-4 pt-4">
+            <div className="flex flex-col items-center lg:items-start space-y-2">
+              <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                <Zap className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-sm">Fast Delivery</h3>
+                <p className="text-xs text-muted-foreground">Instant message delivery</p>
+              </div>
+            </div>
+            <div className="flex flex-col items-center lg:items-start space-y-2">
+              <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                <Shield className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-sm">Secure</h3>
+                <p className="text-xs text-muted-foreground">End-to-end encryption</p>
+              </div>
+            </div>
+            <div className="flex flex-col items-center lg:items-start space-y-2">
+              <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                <Globe className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-sm">Global</h3>
+                <p className="text-xs text-muted-foreground">Worldwide coverage</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right side - Login Card */}
+        <Card className="shadow-2xl border-2">
+          <CardHeader className="space-y-1">
+            <CardTitle className="text-2xl font-bold">Welcome Back</CardTitle>
+            <CardDescription>
+              Enter your password to access the SMS gateway
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <label htmlFor="password" className="text-sm font-medium leading-none">
+                  Password
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="Enter your password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="pl-10"
+                    required
+                    disabled={isLoading}
+                  />
+                </div>
+                {error && (
+                  <p className="text-sm text-destructive">{error}</p>
+                )}
+              </div>
+
+              <Button
+                type="submit"
+                className="w-full"
+                size="lg"
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  "Signing in..."
+                ) : (
+                  <>
+                    Sign In
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </>
+                )}
+              </Button>
+
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-card px-2 text-muted-foreground">
+                    Powered by Textbelt API
+                  </span>
+                </div>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

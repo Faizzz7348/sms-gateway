@@ -11,13 +11,17 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
-import { Eye, EyeOff, Plug, Save, RefreshCw } from "lucide-react";
+import { Eye, EyeOff, Plug, Save, RefreshCw, ShoppingCart, Phone } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAccountUsage } from "@/hooks/useAccountUsage";
+import { usePurchaseCredits } from "@/hooks/usePurchaseCredits";
+import { usePhoneVerify } from "@/hooks/usePhoneVerify";
 
 export default function SettingsForm() {
   const [showApiKey, setShowApiKey] = useState(false);
   const [showToken, setShowToken] = useState(false);
+  const [purchaseQuantity, setPurchaseQuantity] = useState(10);
+  const [phoneToVerify, setPhoneToVerify] = useState("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { 
@@ -27,6 +31,9 @@ export default function SettingsForm() {
     isLoading: usageLoading,
     refetch: refetchUsage
   } = useAccountUsage();
+  
+  const purchaseMutation = usePurchaseCredits();
+  const verifyPhoneMutation = usePhoneVerify();
 
   const { data: settings, isLoading, refetch: refetchSettings } = useQuery<Settings>({
     queryKey: ["/api/settings"],
@@ -117,6 +124,44 @@ export default function SettingsForm() {
     }
 
     testConnectionMutation.mutate({ apiKey, apiEndpoint: apiEndpoint || "https://textbelt.com/text" });
+  };
+
+  const handlePurchase = () => {
+    if (purchaseQuantity < 1) {
+      toast({
+        title: "Invalid quantity",
+        description: "Please enter a quantity of at least 1",
+        variant: "destructive",
+      });
+      return;
+    }
+    purchaseMutation.mutate(purchaseQuantity);
+  };
+
+  const handleVerifyPhone = () => {
+    if (!phoneToVerify) {
+      toast({
+        title: "Phone number required",
+        description: "Please enter a phone number to verify",
+        variant: "destructive",
+      });
+      return;
+    }
+    verifyPhoneMutation.mutate(phoneToVerify, {
+      onSuccess: (data) => {
+        toast({
+          title: "Phone Verification",
+          description: `Format: ${data.isValidFormat ? '✅ Valid' : '❌ Invalid'}\nNormalized: ${data.normalized}`,
+        });
+      },
+      onError: (error: any) => {
+        toast({
+          title: "Verification failed",
+          description: error.message || "Please try again.",
+          variant: "destructive",
+        });
+      },
+    });
   };
 
   if (isLoading) {
@@ -293,18 +338,18 @@ export default function SettingsForm() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Default Country Code</FormLabel>
-                    <Select value={field.value ?? "+1"} onValueChange={field.onChange}>
+                    <Select value={field.value ?? "+60"} onValueChange={field.onChange}>
                       <FormControl>
                         <SelectTrigger data-testid="select-country-code">
                           <SelectValue placeholder="Select country code" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
+                        <SelectItem value="+60">Malaysia (+60)</SelectItem>
                         <SelectItem value="+1">United States (+1)</SelectItem>
                         <SelectItem value="+44">United Kingdom (+44)</SelectItem>
                         <SelectItem value="+49">Germany (+49)</SelectItem>
                         <SelectItem value="+33">France (+33)</SelectItem>
-                        <SelectItem value="+60">Malaysia (+60)</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -407,6 +452,78 @@ export default function SettingsForm() {
                 )}
               </p>
               <p className="text-sm text-muted-foreground">Success Rate</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Purchase Credits */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Purchase Credits</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="purchase-quantity">Number of texts to purchase</Label>
+              <div className="flex space-x-2 mt-2">
+                <Input
+                  id="purchase-quantity"
+                  type="number"
+                  min="1"
+                  value={purchaseQuantity}
+                  onChange={(e) => setPurchaseQuantity(parseInt(e.target.value) || 1)}
+                  className="flex-1"
+                  data-testid="input-purchase-quantity"
+                />
+                <Button
+                  onClick={handlePurchase}
+                  disabled={purchaseMutation.isPending}
+                  data-testid="button-purchase"
+                >
+                  <ShoppingCart className="h-4 w-4 mr-2" />
+                  {purchaseMutation.isPending ? "Processing..." : "Purchase"}
+                </Button>
+              </div>
+              <p className="text-sm text-muted-foreground mt-2">
+                Estimated cost: ${(purchaseQuantity * 0.04).toFixed(2)}
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Phone Verification */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Phone Number Verification</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="phone-verify">Phone number to verify</Label>
+              <div className="flex space-x-2 mt-2">
+                <Input
+                  id="phone-verify"
+                  type="tel"
+                  placeholder="+60123456789"
+                  value={phoneToVerify}
+                  onChange={(e) => setPhoneToVerify(e.target.value)}
+                  className="flex-1"
+                  data-testid="input-phone-verify"
+                />
+                <Button
+                  onClick={handleVerifyPhone}
+                  disabled={verifyPhoneMutation.isPending}
+                  data-testid="button-verify-phone"
+                >
+                  <Phone className="h-4 w-4 mr-2" />
+                  {verifyPhoneMutation.isPending ? "Verifying..." : "Verify"}
+                </Button>
+              </div>
+              <p className="text-sm text-muted-foreground mt-2">
+                Check if a phone number format is valid before sending
+              </p>
             </div>
           </div>
         </CardContent>

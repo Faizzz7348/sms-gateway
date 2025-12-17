@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import type { Contact } from "@shared/schema";
-import Sidebar from "@/components/layout/sidebar";
+import { AppSidebar } from "@/components/layout/app-sidebar";
 import MobileNav from "@/components/layout/mobile-nav";
 import ComposeForm from "@/components/compose/compose-form";
 import QuickContacts from "@/components/compose/quick-contacts";
@@ -10,9 +10,22 @@ import MessageHistory from "@/components/history/message-history";
 import ContactGrid from "@/components/contacts/contact-grid";
 import SettingsForm from "@/components/settings/settings-form";
 import ContactModal from "@/components/contacts/contact-modal";
-import { useMobileSidebar } from "@/hooks/use-mobile-sidebar";
-import { Bell, Menu, Moon, Sun, LogOut } from "lucide-react";
+import { Bell, Menu, Moon, Sun, LogOut, PanelLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
+import { Separator } from "@/components/ui/separator";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 
 type Tab = "compose" | "history" | "contacts" | "settings";
 
@@ -21,7 +34,6 @@ export default function Home() {
   const [showContactModal, setShowContactModal] = useState(false);
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
   const [isDark, setIsDark] = useState(true);
-  const { isSidebarOpen, toggleSidebar, closeSidebar } = useMobileSidebar();
   const { isLoading, isAuthenticated } = useAuth();
   const { toast } = useToast();
 
@@ -37,7 +49,6 @@ export default function Home() {
     const handleSwitchTab = (event: CustomEvent) => {
       const tabName = event.detail as Tab;
       setActiveTab(tabName);
-      closeSidebar(); // Close mobile sidebar when switching tabs
     };
 
     window.addEventListener('switchTab', handleSwitchTab as EventListener);
@@ -45,7 +56,7 @@ export default function Home() {
     return () => {
       window.removeEventListener('switchTab', handleSwitchTab as EventListener);
     };
-  }, [closeSidebar]);
+  }, []);
 
   // Listen for edit contact events
   useEffect(() => {
@@ -98,32 +109,26 @@ export default function Home() {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
-      <Sidebar 
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-        isOpen={isSidebarOpen}
-        onClose={closeSidebar}
-      />
-      
-      <main className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
-        <header className="bg-card border-b border-border px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={toggleSidebar}
-              data-testid="button-sidebar-toggle"
-              className="hover:bg-gray-200 dark:hover:bg-gray-700"
-            >
-              <Menu className="h-5 w-5" />
-            </Button>
-            <h1 className="text-sm font-semibold text-foreground" data-testid="text-page-title">
-              {getPageTitle(activeTab)}
-            </h1>
-          </div>
-          <div className="flex items-center space-x-3">
+    <SidebarProvider>
+      <AppSidebar activeTab={activeTab} onTabChange={setActiveTab} />
+      <SidebarInset>
+        <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
+          <SidebarTrigger className="-ml-1" />
+          <Separator orientation="vertical" className="mr-2 h-4" />
+          <Breadcrumb>
+            <BreadcrumbList>
+              <BreadcrumbItem className="hidden md:block">
+                <BreadcrumbLink href="#">
+                  Textbelt Pro
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator className="hidden md:block" />
+              <BreadcrumbItem>
+                <BreadcrumbPage>{getPageTitle(activeTab)}</BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+          <div className="ml-auto flex items-center space-x-2">
             <Button 
               variant="ghost" 
               size="sm" 
@@ -135,54 +140,38 @@ export default function Home() {
             <Button variant="ghost" size="sm" data-testid="button-notifications">
               <div className="relative">
                 <Bell className="h-4 w-4" />
-                <span className="absolute -top-1 -right-1 w-3 h-3 bg-destructive rounded-full text-sm"></span>
+                <span className="absolute -top-1 -right-1 w-2 h-2 bg-destructive rounded-full"></span>
               </div>
-            </Button>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={async () => {
-                try {
-                  await fetch("/api/logout", { method: "POST" });
-                  window.location.href = "/";
-                } catch (error) {
-                  console.error("Logout error:", error);
-                  window.location.href = "/";
-                }
-              }}
-              data-testid="button-logout"
-            >
-              <LogOut className="h-4 w-4" />
             </Button>
           </div>
         </header>
-
-        {/* Content */}
-        <div className="flex-1 overflow-auto p-6 pb-20 md:pb-6 transition-all duration-300 ease-out">
-          {activeTab === "compose" && (
-            <div className="max-w-4xl mx-auto">
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2">
-                  <ComposeForm onShowContacts={() => setShowContactModal(true)} />
-                </div>
-                <div className="lg:col-span-1">
-                  <QuickContacts onSelectContact={(phone) => {
-                    // This will be handled by the ComposeForm component
-                  }} />
+        <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+          <div className="min-h-[100vh] flex-1 rounded-xl bg-muted/50 p-4 md:p-6">
+            {activeTab === "compose" && (
+              <div className="max-w-4xl mx-auto">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <div className="lg:col-span-2">
+                    <ComposeForm onShowContacts={() => setShowContactModal(true)} />
+                  </div>
+                  <div className="lg:col-span-1">
+                    <QuickContacts onSelectContact={(phone) => {
+                      // This will be handled by the ComposeForm component
+                    }} />
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
-          
-          {activeTab === "history" && <MessageHistory />}
-          
-          {activeTab === "contacts" && (
-            <ContactGrid onAddContact={() => setShowContactModal(true)} />
-          )}
-          
-          {activeTab === "settings" && <SettingsForm />}
+            )}
+            
+            {activeTab === "history" && <MessageHistory />}
+            
+            {activeTab === "contacts" && (
+              <ContactGrid onAddContact={() => setShowContactModal(true)} />
+            )}
+            
+            {activeTab === "settings" && <SettingsForm />}
+          </div>
         </div>
-      </main>
+      </SidebarInset>
 
       <MobileNav activeTab={activeTab} onTabChange={setActiveTab} />
       
@@ -194,6 +183,6 @@ export default function Home() {
         }}
         editingContact={editingContact}
       />
-    </div>
+    </SidebarProvider>
   );
 }
