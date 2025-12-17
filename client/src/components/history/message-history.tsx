@@ -189,7 +189,7 @@ export default function MessageHistory() {
                 placeholder="Search messages..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-8"
+                className="pl-8 bg-background"
                 data-testid="input-search-messages"
               />
             </div>
@@ -208,30 +208,38 @@ export default function MessageHistory() {
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px]">
-              <thead className="bg-muted">
+            <table className="w-full table-fixed">
+              <colgroup>
+                <col className="w-[180px]" />
+                <col className="hidden md:table-column" />
+                <col className="w-[100px]" />
+                <col className="w-[120px] hidden sm:table-column" />
+                <col className="w-[80px] hidden lg:table-column" />
+                <col className="w-[140px]" />
+              </colgroup>
+              <thead className="bg-muted/50">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Recipient
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">
+                  <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">
                     Message
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden sm:table-cell">
+                  <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden sm:table-cell">
                     Sent
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden lg:table-cell">
+                  <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden lg:table-cell">
                     Cost
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody className="bg-background divide-y divide-border">
                 {filteredMessages.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="px-6 py-8 text-center text-muted-foreground">
@@ -240,33 +248,35 @@ export default function MessageHistory() {
                   </tr>
                 ) : (
                   filteredMessages.map((message) => (
-                    <tr key={message.id} className="hover:bg-accent" data-testid={`row-message-${message.id}`}>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <div>
-                          <p className="text-sm font-medium text-foreground" data-testid={`text-recipient-name-${message.id}`}>
+                    <tr key={message.id} className="hover:bg-accent/50" data-testid={`row-message-${message.id}`}>
+                      <td className="px-4 py-4">
+                        <div className="overflow-hidden">
+                          <div className="text-sm font-medium text-foreground truncate" data-testid={`text-recipient-name-${message.id}`}>
                             {message.recipientName || "Unknown"}
-                          </p>
-                          <p className="text-xs text-muted-foreground" data-testid={`text-recipient-phone-${message.id}`}>
+                          </div>
+                          <div className="text-xs text-muted-foreground truncate" data-testid={`text-recipient-phone-${message.id}`}>
                             {message.recipientPhone}
-                          </p>
+                          </div>
                         </div>
                       </td>
                       <td className="px-4 py-4 hidden md:table-cell">
-                        <p className="text-sm text-foreground truncate max-w-xs" data-testid={`text-message-content-${message.id}`}>
+                        <div className="text-sm text-foreground truncate" data-testid={`text-message-content-${message.id}`}>
                           {message.content}
-                        </p>
+                        </div>
                       </td>
-                      <td className="px-4 py-4 whitespace-nowrap" data-testid={`status-message-${message.id}`}>
+                      <td className="px-4 py-4" data-testid={`status-message-${message.id}`}>
                         {getStatusBadge(message.status)}
                       </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm text-muted-foreground hidden sm:table-cell" data-testid={`text-sent-time-${message.id}`}>
-                        {message.sentAt ? formatDistanceToNow(new Date(message.sentAt), { addSuffix: true }) : ""}
+                      <td className="px-4 py-4 text-sm text-muted-foreground hidden sm:table-cell" data-testid={`text-sent-time-${message.id}`}>
+                        <div className="truncate">
+                          {message.sentAt ? formatDistanceToNow(new Date(message.sentAt), { addSuffix: true }) : "-"}
+                        </div>
                       </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm text-muted-foreground hidden lg:table-cell" data-testid={`text-cost-${message.id}`}>
+                      <td className="px-4 py-4 text-sm font-medium text-muted-foreground hidden lg:table-cell" data-testid={`text-cost-${message.id}`}>
                         ${message.cost || "0.00"}
                       </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm">
-                        <div className="flex items-center gap-1">
+                      <td className="px-4 py-4">
+                        <div className="flex items-center gap-1 justify-end">
                           {message.textbeltId && (
                             <Button 
                               variant="ghost" 
@@ -378,7 +388,7 @@ export default function MessageHistory() {
           </div>
 
           {/* Pagination */}
-          <div className="px-4 sm:px-6 py-4 border-t border-border">
+          <div className="border-t border-border bg-muted/30 px-4 py-4">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
               <p className="text-sm text-muted-foreground" data-testid="text-pagination-info">
                 Showing {filteredMessages.length} message{filteredMessages.length !== 1 ? 's' : ''}
