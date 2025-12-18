@@ -17,9 +17,9 @@ export const sessions = pgTable(
 // User storage table for authentication
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  email: varchar("email").unique(),
-  firstName: varchar("first_name"),
-  lastName: varchar("last_name"),
+  email: varchar("email").unique().notNull(),
+  password: text("password").notNull(),
+  name: varchar("name").notNull(),
   profileImageUrl: varchar("profile_image_url"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -79,6 +79,18 @@ export const insertSettingsSchema = createInsertSchema(settings).omit({
 });
 
 export const updateSettingsSchema = insertSettingsSchema.partial();
+
+// Auth schemas
+export const registerSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  name: z.string().min(2, "Name must be at least 2 characters"),
+});
+
+export const loginSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(1, "Password is required"),
+});
 
 export type User = typeof users.$inferSelect;
 export type UpsertUser = typeof users.$inferInsert;

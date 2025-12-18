@@ -2,8 +2,9 @@ import type { Express, RequestHandler } from "express";
 import { createServer, type Server } from "http";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
+import bcrypt from "bcryptjs";
 import { storage } from "./storage";
-import { insertContactSchema, insertMessageSchema, updateSettingsSchema } from "@shared/schema";
+import { insertContactSchema, insertMessageSchema, updateSettingsSchema, registerSchema, loginSchema } from "@shared/schema";
 import { z } from "zod";
 import { pool } from "./db";
 
@@ -31,7 +32,7 @@ const sessionMiddleware = session({
 
 // Simple authentication middleware
 const isAuthenticated: RequestHandler = (req, res, next) => {
-  if (req.session && (req.session as any).authenticated) {
+  if (req.session && ((req.session as any).authenticated || (req.session as any).userId)) {
     return next();
   }
   return res.status(401).json({ message: "Unauthorized" });
@@ -41,7 +42,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Setup session middleware
   app.use(sessionMiddleware);
 
-  // Password access route
+  // Register route
+  app.post('/api/auth/register', async (req, res) => {
+    try {
+      const validatedData = registerSchema.parse(req.body);
+      
+      // Check if user already exists
+      const existingUser = await storage.getUserByEmail(validatedData.email);
+      if (existingUser) {
+        return res.status(400).json({ message: "Email already registered" });
+      }
+
+      // Hash password
+      const hashedPassword = await bcrypt.hash(validatedData.password, 10);
+
+      // Create user
+      const user = await storage.createUser({
+        email: validatedData.email,
+        password: hashedPassword,
+        name: validatedData.name,
+      });
+
+      // Set session
+      (req.session as any).userId = user.id;
+      (req.session as any).authenticated = true;
+
+      res.status(201).json({
+        success: true,
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+        },
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to register" });
+    }
+  });
+
+  // Login route
+  app.post('/api/auth/login', async (req, res) => {
+    try {
+      const validatedData = loginSchema.parse(req.body);
+      
+      // Get user by email
+      const user = await storage.getUserByEmail(validatedData.email);
+      if (!user) {
+        return res.status(401).json({ message: "Invalid email or password" });
+      }
+
+      // Verify password
+      const isValidPassword = await bcrypt.compare(validatedData.password, user.password);
+      if (!isValidPassword) {
+        return res.status(401).json({ message: "Invalid email or password" });
+      }
+
+      // Set session
+      (req.session as any).userId = user.id;
+      (req.session as any).authenticated = true;
+
+      res.json({
+        success: true,
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+        },
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to login" });
+    }
+  });
+
+  // Password access route (backward compatibility)
   app.post('/api/access', async (req, res) => {
     try {
       const { password } = req.body;
@@ -59,7 +138,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Check auth status
   app.get('/api/auth/status', async (req, res) => {
-    if (req.session && (req.session as any).authenticated) {
+    if (req.session && ((req.session as any).authenticated || (req.session as any).userId)) {
+      const userId = (req.session as any).userId;
+      if (userId) {
+        const user = await storage.getUserById(userId);
+        if (user) {
+          return res.json({
+            authenticated: true,
+            user: {
+              id: user.id,
+              email: user.email,
+              name: user.name,
+            },
+          });
+        }
+      }
       res.json({ authenticated: true });
     } else {
       res.status(401).json({ authenticated: false });

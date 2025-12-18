@@ -6,7 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import { useState, useEffect } from "react";
 import Home from "@/pages/home";
-import Landing from "@/pages/landing";
+import Auth from "@/pages/auth";
 import NotFound from "@/pages/not-found";
 import LoadingIntro from "@/components/loading-intro";
 
@@ -35,7 +35,7 @@ function Router() {
     <div className={`transition-all duration-700 ease-out ${introComplete ? 'opacity-100 transform-none' : 'opacity-0 scale-95'}`}>
       <Switch>
         {isLoading || !isAuthenticated ? (
-          <Route path="/" component={Landing} />
+          <Route path="/" component={Auth} />
         ) : (
           <>
             <Route path="/" component={Home} />

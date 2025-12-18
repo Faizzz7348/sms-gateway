@@ -1,14 +1,26 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 
+interface User {
+  id: string;
+  email: string;
+  name: string;
+}
+
+interface AuthStatus {
+  authenticated: boolean;
+  user?: User;
+}
+
 export function useAuth() {
-  const { data: authStatus, isLoading } = useQuery<{ authenticated: boolean }>({
+  const { data: authStatus, isLoading } = useQuery<AuthStatus>({
     queryKey: ["/api/auth/status"],
     retry: false,
   });
 
   const logoutTimerRef = useRef<NodeJS.Timeout | null>(null);
   const isAuthenticated = authStatus?.authenticated || false;
+  const user = authStatus?.user;
 
   // Auto logout after 30 minutes of inactivity
   const resetLogoutTimer = () => {
@@ -74,5 +86,6 @@ export function useAuth() {
   return {
     isLoading,
     isAuthenticated,
+    user,
   };
 }

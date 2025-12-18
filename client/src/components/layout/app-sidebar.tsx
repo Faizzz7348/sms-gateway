@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { useAccountBalance } from "@/hooks/useAccountBalance"
 import { useAccountUsage } from "@/hooks/useAccountUsage"
+import { useAuth } from "@/hooks/useAuth"
 import { cn } from "@/lib/utils"
 
 type Tab = "compose" | "history" | "contacts" | "settings"
@@ -67,6 +68,7 @@ const navigation = [
 export function AppSidebar({ activeTab, onTabChange, ...props }: AppSidebarProps) {
   const { balance, quotaRemaining, isLoading: balanceLoading, refetch: refetchBalance } = useAccountBalance()
   const { messagesSent, successRate } = useAccountUsage()
+  const { user } = useAuth()
 
   const handleLogout = async () => {
     try {
@@ -190,8 +192,8 @@ export function AppSidebar({ activeTab, onTabChange, ...props }: AppSidebarProps
                     <User2 className="size-4" />
                   </div>
                   <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-semibold">Account</span>
-                    <span className="truncate text-xs">Manage settings</span>
+                    <span className="truncate font-semibold">{user?.name || "Account"}</span>
+                    <span className="truncate text-xs">{user?.email || "Manage settings"}</span>
                   </div>
                   <ChevronUp className="ml-auto size-4" />
                 </SidebarMenuButton>
