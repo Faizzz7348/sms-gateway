@@ -154,12 +154,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get API settings
       const settings = await storage.getSettings();
       if (!settings?.apiKey) {
-        return res.status(400).json({ message: "API key not configured. Please configure your Textbelt API key in settings." });
+        return res.status(400).json({ 
+          message: "API key not configured. Please configure your Textbelt API key in settings.",
+          hint: "Get your API key from https://textbelt.com and add credits"
+        });
+      }
+
+      // Validate phone number format
+      let phoneNumber = messageData.recipientPhone.trim();
+      
+      // Add country code if missing
+      if (!phoneNumber.startsWith('+')) {
+        // Use default country code from settings
+        const defaultCode = settings.defaultCountryCode || '+60';
+        // Remove leading 0 if present
+        if (phoneNumber.startsWith('0')) {
+          phoneNumber = phoneNumber.substring(1);
+        }
+        phoneNumber = defaultCode + phoneNumber;
+        console.log(`📞 Added country code: ${phoneNumber}`);
       }
 
       // Create message record first with default status
       const message = await storage.createMessage({
-        recipientPhone: messageData.recipientPhone,
+        recipientPhone: phoneNumber, // Use formatted phone number
         recipientName: messageData.recipientName,
         content: messageData.content,
         status: "pending",
@@ -170,12 +188,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       try {
         // Send via Textbelt API using documented form encoding
+        // Textbelt /text endpoint works for all countries with proper country code
         const textbeltEndpoint = settings.apiEndpoint || "https://textbelt.com/text";
         const textbeltBody = new URLSearchParams({
-          phone: messageData.recipientPhone,
+          phone: phoneNumber, // Use formatted phone number
           message: messageData.content,
           key: settings.apiKey,
         });
+
+        console.log("🚀 Sending SMS Request:");
+        console.log("   Endpoint:", textbeltEndpoint);
+        console.log("   Phone:", phoneNumber);
+        console.log("   Message:", messageData.content);
+        console.log("   API Key:", settings.apiKey ? `${settings.apiKey.substring(0, 8)}...` : 'NOT SET');
 
         const textbeltResponse = await fetch(textbeltEndpoint, {
           method: "POST",
@@ -185,23 +210,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
           body: textbeltBody.toString(),
         });
 
+        console.log("📡 Response Status:", textbeltResponse.status);
+        console.log("📡 Response Headers:", Object.fromEntries(textbeltResponse.headers.entries()));
+
+        // Always try to get the JSON response for better error details
+        const textbeltResult = await textbeltResponse.json();
+        console.log("📱 Textbelt Response:", JSON.stringify(textbeltResult, null, 2));
+
         if (!textbeltResponse.ok) {
+          const errorMsg = textbeltResult.error || `HTTP ${textbeltResponse.status}`;
           await storage.updateMessage(message.id, {
             status: "failed",
-            errorMessage: `Textbelt responded with HTTP ${textbeltResponse.status}`,
+            errorMessage: errorMsg,
           });
+
+          console.log("❌ SMS Failed - HTTP Error!");
+          console.log("   Status:", textbeltResponse.status);
+          console.log("   Error:", errorMsg);
+
+          // Provide helpful error messages
+          let userMessage = "SMS provider returned an error";
+          let hint = "";
+
+          if (textbeltResponse.status === 404) {
+            userMessage = "Invalid API endpoint";
+            hint = "The endpoint URL is incorrect. Use: https://textbelt.com/text (ensure phone has country code)";
+          } else if (errorMsg.includes("Invalid API key")) {
+            userMessage = "Invalid API key";
+            hint = "Check your Textbelt API key in Settings. Get one from https://textbelt.com";
+          } else if (errorMsg.includes("Out of quota") || errorMsg.includes("insufficient")) {
+            userMessage = "Insufficient credits";
+            hint = "Your Textbelt account is out of credits. Purchase more at https://textbelt.com";
+          } else if (errorMsg.includes("Invalid phone")) {
+            userMessage = "Invalid phone number format";
+            hint = `Phone: ${phoneNumber}. Ensure it includes country code (e.g., +60123456789)`;
+          }
 
           return res.status(502).json({
-            message: "SMS provider returned an error",
-            error: `HTTP ${textbeltResponse.status}`,
+            message: userMessage,
+            error: errorMsg,
+            hint: hint,
+            details: textbeltResult,
           });
         }
-
-        const textbeltResult = await textbeltResponse.json();
         
         // LOG FULL RESPONSE untuk debugging
-        console.log("📱 Textbelt Response:", JSON.stringify(textbeltResult, null, 2));
-        console.log("📞 Sent to:", messageData.recipientPhone);
+        console.log("📞 Sent to:", phoneNumber);
         console.log("💬 Message:", messageData.content);
         console.log("🔑 Endpoint:", textbeltEndpoint);
         
@@ -240,17 +294,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
             quotaRemaining: textbeltResult.quotaRemaining,
           });
         }
-      } catch (apiError) {
+      } catch (apiError: any) {
         // Update message status to failed
-        console.log("🔥 Network Error:", apiError);
+        console.log("🔥 Network/API Error:");
+        console.log("   Error Type:", apiError.name);
+        console.log("   Error Message:", apiError.message);
+        console.log("   Error Code:", apiError.code);
+        console.log("   Full Error:", apiError);
+        
         await storage.updateMessage(message.id, {
           status: "failed",
-          errorMessage: "Network error communicating with Textbelt API",
+          errorMessage: `Network error: ${apiError.message || 'Cannot reach Textbelt API'}`,
         });
+        
+        const endpoint = settings.apiEndpoint || "https://textbelt.com/text";
         
         res.status(500).json({
           message: "Failed to communicate with SMS service",
-          error: "Network error",
+          error: apiError.message || "Network error reaching Textbelt API",
+          details: {
+            type: apiError.name,
+            code: apiError.code,
+            endpoint: endpoint,
+          },
+          hint: "Check internet connection or firewall settings. The server cannot reach textbelt.com",
         });
       }
     } catch (error) {
@@ -325,7 +392,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const defaultSettings = {
           id: "",
           apiKey: null,
-          apiEndpoint: "https://textbelt.com/intl",
+          apiEndpoint: "https://textbelt.com/text",
           defaultCountryCode: "+60",
           autoSaveDrafts: true,
           messageConfirmations: false,

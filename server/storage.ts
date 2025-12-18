@@ -173,7 +173,7 @@ export class MemStorage implements IStorage {
       id,
       apiKey: insertSettings.apiKey ?? null,
       token: insertSettings.token ?? null,
-      apiEndpoint: insertSettings.apiEndpoint ?? "https://textbelt.com/intl",
+      apiEndpoint: insertSettings.apiEndpoint ?? "https://textbelt.com/text",
       defaultCountryCode: insertSettings.defaultCountryCode ?? "+60",
       autoSaveDrafts: insertSettings.autoSaveDrafts ?? true,
       messageConfirmations: insertSettings.messageConfirmations ?? false
@@ -189,7 +189,7 @@ export class MemStorage implements IStorage {
         id: randomUUID(),
         apiKey: null,
         token: null,
-        apiEndpoint: "https://textbelt.com/intl",
+        apiEndpoint: "https://textbelt.com/text",
         defaultCountryCode: "+60",
         autoSaveDrafts: true,
         messageConfirmations: false

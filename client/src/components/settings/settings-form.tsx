@@ -44,7 +44,7 @@ export default function SettingsForm() {
     defaultValues: {
       apiKey: "",
       token: "",
-      apiEndpoint: "https://textbelt.com/intl",
+      apiEndpoint: "https://textbelt.com/text",
       defaultCountryCode: "+60",
       autoSaveDrafts: true,
       messageConfirmations: false,
@@ -57,7 +57,7 @@ export default function SettingsForm() {
       form.reset({
         apiKey: settings.apiKey || "",
         token: settings.token || "",
-        apiEndpoint: settings.apiEndpoint || "https://textbelt.com/intl",
+        apiEndpoint: settings.apiEndpoint || "https://textbelt.com/text",
         defaultCountryCode: settings.defaultCountryCode || "+60",
         autoSaveDrafts: settings.autoSaveDrafts ?? true,
         messageConfirmations: settings.messageConfirmations ?? false,
@@ -289,11 +289,16 @@ export default function SettingsForm() {
                     <FormControl>
                       <Input
                         {...field}
-                        value={field.value ?? ""}
+                        value={field.value ?? "https://textbelt.com/text"}
                         type="url"
+                        readOnly
                         data-testid="input-api-endpoint"
+                        className="bg-muted"
                       />
                     </FormControl>
+                    <FormDescription>
+                      Textbelt uses <strong>/text</strong> endpoint for all countries. Include country code in phone number (e.g., +60 for Malaysia).
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

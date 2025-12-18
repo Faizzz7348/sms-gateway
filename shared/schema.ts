@@ -49,7 +49,7 @@ export const settings = pgTable("settings", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   apiKey: text("api_key"),
   token: text("token"),
-  apiEndpoint: text("api_endpoint").default("https://textbelt.com/intl"),
+  apiEndpoint: text("api_endpoint").default("https://textbelt.com/text"),
   defaultCountryCode: text("default_country_code").default("+60"),
   autoSaveDrafts: boolean("auto_save_drafts").default(true),
   messageConfirmations: boolean("message_confirmations").default(false),
