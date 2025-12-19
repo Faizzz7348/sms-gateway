@@ -42,6 +42,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Setup session middleware
   app.use(sessionMiddleware);
 
+  // Serve migration page
+  app.get('/migrate', async (req, res) => {
+    const fs = await import('fs');
+    const path = await import('path');
+    const migrateHtmlPath = path.join(process.cwd(), 'client', 'migrate.html');
+    
+    if (fs.existsSync(migrateHtmlPath)) {
+      res.sendFile(migrateHtmlPath);
+    } else {
+      res.status(404).send('Migration page not found');
+    }
+  });
+
+  // Migration endpoint - for easy database setup
+  app.post('/api/migrate', async (req, res) => {
+    try {
+      const { exec } = await import('child_process');
+      const { promisify } = await import('util');
+      const execAsync = promisify(exec);
+      
+      console.log('🚀 Running database migration...');
+      const { stdout, stderr } = await execAsync('npx drizzle-kit push --yes');
+      
+      console.log(stdout);
+      if (stderr && !stderr.includes('warning')) {
+        console.error(stderr);
+      }
+      
+      res.json({ 
+        success: true, 
+        message: 'Database migration completed successfully!',
+        output: stdout
+      });
+    } catch (error) {
+      console.error('Migration error:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Migration failed',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
   // Register route
   app.post('/api/auth/register', async (req, res) => {
     try {
@@ -79,7 +122,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Invalid data", errors: error.errors });
       }
-      res.status(500).json({ message: "Failed to register" });
+      console.error("Registration error:", error);
+      res.status(500).json({ message: "Failed to register", error: error instanceof Error ? error.message : "Unknown error" });
     }
   });
 
@@ -116,7 +160,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Invalid data", errors: error.errors });
       }
-      res.status(500).json({ message: "Failed to login" });
+      console.error("Login error:", error);
+      res.status(500).json({ message: "Failed to login", error: error instanceof Error ? error.message : "Unknown error" });
     }
   });
 
